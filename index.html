@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>幸运转盘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .wapper {
+            background-image: url('https://video-store-wsz.oss-cn-wuhan-lr.aliyuncs.com/lottery/big-bg.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .inner {
+            width: 520px;
+            height: 520px;
+            position: absolute;
+            left: 42%;
+            top: 56%;
+            transform: translate(-50%, -50%);
+            background-image: url('https://video-store-wsz.oss-cn-wuhan-lr.aliyuncs.com/lottery/lottery_bg.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .lottery-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-origin: 51.4% 47%;
+        }
+
+        .arrow {
+            position: absolute;
+            top: 0;
+            left: 51.4%;
+            transform: translateX(-50%);
+            width: 45px;
+            height: 60px;
+            background-image: url('https://video-store-wsz.oss-cn-wuhan-lr.aliyuncs.com/lottery/arrows.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 10;
+        }
+
+        .button {
+            position: absolute;
+            top: 47%;
+            left: 51.4%;
+            transform: translate(-50%, -50%);
+            width: 190px;
+            height: 190px;
+            background-image: url('https://video-store-wsz.oss-cn-wuhan-lr.aliyuncs.com/lottery/button.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            cursor: pointer;
+            z-index: 5;
+            transition: transform 0.2s;
+        }
+
+        .button:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+
+        .button:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(var(--rotation));
+            }
+        }
+
+        /* 库存展示样式 */
+        .inventory-container {
+            position: fixed;
+            bottom: 20px;
+            /* left: 50%;
+            transform: translateX(-50%); */
+            width: 440px;
+            right: 40px;
+            /* max-width: 350px;     */
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .inventory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.3s;
+        }
+
+        .inventory-header:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+
+        .inventory-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .inventory-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+        }
+
+        .toggle-icon {
+            font-size: 16px;
+            transition: opacity 0.3s;
+        }
+
+        .inventory-content {
+            max-height: 300px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            padding: 15px 0;
+            box-sizing: content-box;
+        }
+
+        .inventory-content.collapsed {
+            max-height: 0;
+            padding: 0;
+        }
+
+        .inventory-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: background 0.2s;
+        }
+
+        .inventory-item:last-child {
+            border-bottom: none;
+        }
+
+        .inventory-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .prize-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .inventory-prize-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .inventory-prize-grade {
+            font-size: 12px;
+            color: #666;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .prize-quantity {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .quantity-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .quantity-text {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 中奖弹窗样式 */
+        .prize-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .prize-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 350px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalPop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes modalPop {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .prize-modal-header {
+            margin-bottom: 20px;
+        }
+
+        .prize-modal-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .prize-modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .prize-modal-body {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px 20px;
+            margin-bottom: 20px;
+        }
+
+        /* 彩纸特效 */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ffd700;
+            animation: confettiFall 3s linear infinite;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .prize-emoji {
+            font-size: 64px;
+            margin-bottom: 15px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .prize-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            animation: slideInUp 0.5s ease;
+        }
+
+        .prize-grade {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            animation: slideInUp 0.6s ease;
+        }
+
+        .prize-modal-footer {
+            text-align: center;
+        }
+
+        .prize-modal-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 40px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .prize-modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .prize-modal-btn:active {
+            transform: translateY(0);
+        }
+
+        /* 谢谢惠顾特殊样式 */
+        .prize-modal.thanks .prize-modal-icon {
+            content: '😊';
+        }
+
+        .prize-modal.thanks .prize-modal-title {
+            content: '谢谢惠顾！';
+        }
+
+        .prize-modal.thanks .prize-emoji {
+            content: '🙏';
+            font-size: 48px;
+        }
+
+        .prize-modal.thanks .prize-grade {
+            background: linear-gradient(135deg, #ffa726 0%, #ff7043 100%);
+        }
+
+        /* 动画效果 */
+        @keyframes bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateY(0);
+            }
+
+            40% {
+                transform: translateY(-10px);
+            }
+
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wapper">
+        <div class="inner">
+            <div class="lottery-container" id="wheelWrapper">
+                <div class="arrow"></div>
+                <div class="button" id="lotteryButton"></div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- 库存展示区域 -->
+    <div class="inventory-container" id="inventoryContainer">
+        <div class="inventory-header" id="inventoryHeader">
+            <span class="inventory-title">剩余库存</span>
+            <span class="inventory-toggle" id="inventoryToggle">
+                <span class="toggle-icon expand-icon" style="display: none;">📋</span>
+                <span class="toggle-icon collapse-icon">📦</span>
+            </span>
+        </div>
+        <div class="inventory-content collapsed" id="inventoryContent">
+            <div class="inventory-item">
+                <div class="prize-info">
+                    <span class="inventory-prize-name">🍎 两个金苹果</span>
+                    <span class="inventory-prize-grade">一等奖</span>
+                </div>
+                <div class="prize-quantity">
+                    <span class="quantity-number">8</span>
+                    <span class="quantity-text">件</span>
+                </div>
+            </div>
+            <div class="inventory-item">
+                <div class="prize-info">
+                    <span class="inventory-prize-name">🔫 AK47-荣耀英雄</span>
+                    <span class="inventory-prize-grade">二等奖</span>
+                </div>
+                <div class="prize-quantity">
+                    <span class="quantity-number">20</span>
+                    <span class="quantity-text">件</span>
+                </div>
+            </div>
+            <div class="inventory-item">
+                <div class="prize-info">
+                    <span class="inventory-prize-name">👤 艾登（永久）</span>
+                    <span class="inventory-prize-grade">三等奖</span>
+                </div>
+                <div class="prize-quantity">
+                    <span class="quantity-number">20</span>
+                    <span class="quantity-text">件</span>
+                </div>
+            </div>
+            <div class="inventory-item">
+                <div class="prize-info">
+                    <span class="inventory-prize-name">💎 680个钻石</span>
+                    <span class="inventory-prize-grade">四等奖</span>
+                </div>
+                <div class="prize-quantity">
+                    <span class="quantity-number">8</span>
+                    <span class="quantity-text">件</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 中奖弹窗 -->
+    <div class="prize-modal" id="prizeModal">
+        <div class="modal-overlay" id="modalOverlay"></div>
+        <div class="modal-content">
+            <div class="prize-modal-header">
+                <div class="prize-modal-icon" id="modalIcon">🎉</div>
+                <div class="prize-modal-title" id="modalTitle">恭喜中奖！</div>
+            </div>
+            <div class="prize-modal-body">
+                <div class="prize-emoji" id="prizeEmoji">🍎</div>
+                <div class="prize-name" id="prizeName">两个金苹果</div>
+                <div class="prize-grade" id="prizeGrade">一等奖</div>
+            </div>
+            <div class="prize-modal-footer">
+                <button class="prize-modal-btn" id="modalBtn">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const wheelWrapper = document.getElementById('wheelWrapper');
+            const lotteryButton = document.getElementById('lotteryButton');
+            const inventoryHeader = document.getElementById('inventoryHeader');
+            const inventoryContent = document.getElementById('inventoryContent');
+            const inventoryToggle = document.getElementById('inventoryToggle');
+
+            let isSpinning = false;
+            let isInventoryCollapsed = true;
+
+            // 库存数据管理
+            const inventory = {
+                '一等奖': {
+                    name: '两个金苹果',
+                    quantity: 8,
+                    angleRange: [252, 324],
+                    emoji: '🍎'
+                },
+                '二等奖': {
+                    name: 'AK47-荣耀英雄',
+                    quantity: 20,
+                    angleRange: [[324, 360], [0, 36]],
+                    emoji: '🔫'
+                },
+                '三等奖': {
+                    name: '艾登（永久）',
+                    quantity: 20,
+                    angleRange: [36, 108],
+                    emoji: '👤'
+                },
+                '四等奖': {
+                    name: '680个钻石',
+                    quantity: 8,
+                    angleRange: [108, 180],
+                    emoji: '💎'
+                }
+            };
+
+            // 更新库存显示
+            function updateInventoryDisplay() {
+                const items = document.querySelectorAll('.inventory-item');
+                items.forEach((item, index) => {
+                    const prizeGrade = ['一等奖', '二等奖', '三等奖', '四等奖'][index];
+                    const quantityElement = item.querySelector('.quantity-number');
+                    const prizeData = inventory[prizeGrade];
+
+                    if (prizeData) {
+                        quantityElement.textContent = prizeData.quantity;
+
+                        // 如果库存为0，添加售罄样式
+                        if (prizeData.quantity === 0) {
+                            item.style.opacity = '0.5';
+                            item.style.textDecoration = 'line-through';
+                        } else {
+                            item.style.opacity = '1';
+                            item.style.textDecoration = 'none';
+                        }
+                    }
+                });
+            }
+
+            // 获取可用的奖项
+            function getAvailablePrizes() {
+                const available = [];
+                for (const [grade, data] of Object.entries(inventory)) {
+                    if (data.quantity > 0) {
+                        available.push({ grade, ...data });
+                    }
+                }
+                return available;
+            }
+
+            // 检查是否还有库存
+            function hasInventory() {
+                return Object.values(inventory).some(data => data.quantity > 0);
+            }
+
+            // 库存折叠/展开功能
+            inventoryHeader.addEventListener('click', function () {
+                isInventoryCollapsed = !isInventoryCollapsed;
+                const expandIcon = document.querySelector('.expand-icon');
+                const collapseIcon = document.querySelector('.collapse-icon');
+
+                if (isInventoryCollapsed) {
+                    inventoryContent.classList.add('collapsed');
+                    expandIcon.style.display = 'none';
+                    collapseIcon.style.display = 'block';
+                } else {
+                    inventoryContent.classList.remove('collapsed');
+                    expandIcon.style.display = 'block';
+                    collapseIcon.style.display = 'none';
+                }
+            });
+
+            // 弹窗相关元素
+            const prizeModal = document.getElementById('prizeModal');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalTitle = document.getElementById('modalTitle');
+            const prizeEmoji = document.getElementById('prizeEmoji');
+            const prizeName = document.getElementById('prizeName');
+            const prizeGrade = document.getElementById('prizeGrade');
+            const modalBtn = document.getElementById('modalBtn');
+
+            // 创建彩纸特效
+            function createConfetti() {
+                const colors = ['#ffd700', '#ff6b9d', '#4facfe', '#43e97b', '#fa709a'];
+
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 2 + 's';
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    prizeModal.appendChild(confetti);
+                }
+            }
+
+            // 清除彩纸特效
+            function clearConfetti() {
+                const confettiElements = prizeModal.querySelectorAll('.confetti');
+                confettiElements.forEach(element => element.remove());
+            }
+
+            // 显示中奖弹窗
+            function showPrizeModal(prizeInfo) {
+                // 清除之前的彩纸
+                clearConfetti();
+
+                // 设置弹窗内容
+                if (prizeInfo.grade === '五等奖') {
+                    // 谢谢惠顾
+                    modalIcon.textContent = '😊';
+                    modalTitle.textContent = '谢谢惠顾！';
+                    prizeEmoji.textContent = '🙏';
+                    prizeName.textContent = prizeInfo.name;
+                    prizeGrade.textContent = '再接再厉';
+                    prizeModal.classList.add('thanks');
+                } else {
+                    // 中奖
+                    modalIcon.textContent = '🎉';
+                    modalTitle.textContent = '恭喜中奖！';
+                    prizeEmoji.textContent = prizeInfo.emoji;
+                    prizeName.textContent = prizeInfo.name;
+                    prizeGrade.textContent = prizeInfo.grade;
+                    prizeModal.classList.remove('thanks');
+
+                    // 添加彩纸特效
+                    createConfetti();
+                }
+
+                // 重置动画
+                const modalContent = document.querySelector('.modal-content');
+                modalContent.style.animation = 'none';
+                modalContent.offsetHeight; // 强制重绘
+                modalContent.style.animation = 'modalPop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+
+                // 显示弹窗
+                prizeModal.style.display = 'flex';
+                setTimeout(() => {
+                    prizeModal.classList.add('show');
+                }, 10);
+            }
+
+            // 关闭弹窗
+            function closePrizeModal() {
+                prizeModal.style.opacity = '0';
+                setTimeout(() => {
+                    prizeModal.style.display = 'none';
+                    prizeModal.style.opacity = '1';
+                    clearConfetti(); // 关闭时清除彩纸
+                }, 200);
+            }
+
+            // 绑定关闭事件
+            modalBtn.addEventListener('click', closePrizeModal);
+            modalOverlay.addEventListener('click', closePrizeModal);
+
+            lotteryButton.addEventListener('click', function () {
+                if (isSpinning) return;
+
+                isSpinning = true;
+
+                // 根据概率控制抽奖结果
+                const random = Math.random() * 100; // 0-100的随机数
+                let targetAngle;
+                let prize = '';
+                let prizeName = '';
+                let prizeGrade = '';
+
+                const availablePrizes = getAvailablePrizes();
+                const hasAnyInventory = hasInventory();
+
+                if (random < 1 && hasAnyInventory) {
+                    // 1% 概率抽中可用奖项
+                    if (availablePrizes.length > 0) {
+                        // 从可用奖项中随机选择一个
+                        const selectedPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)];
+                        prizeGrade = selectedPrize.grade;
+                        prizeName = selectedPrize.name;
+
+                        // 根据奖项确定角度
+                        if (prizeGrade === '一等奖') {
+                            targetAngle = 252 + Math.random() * (324 - 252);
+                        } else if (prizeGrade === '二等奖') {
+                            const secondChoice = Math.random();
+                            if (secondChoice < 0.5) {
+                                targetAngle = 324 + Math.random() * (360 - 324);
+                            } else {
+                                targetAngle = Math.random() * 36;
+                            }
+                        } else if (prizeGrade === '三等奖') {
+                            targetAngle = 36 + Math.random() * (108 - 36);
+                        } else if (prizeGrade === '四等奖') {
+                            targetAngle = 108 + Math.random() * (180 - 108);
+                        }
+
+                        prize = prizeGrade;
+
+                        // 减少库存
+                        inventory[prizeGrade].quantity--;
+                    }
+                } else {
+                    // 99% 概率或没有库存时，谢谢惠顾
+                    targetAngle = 180 + Math.random() * (252 - 180);
+                    prize = '五等奖';
+                    prizeName = '谢谢惠顾';
+                }
+
+                // 随机旋转角度 (基础旋转5圈 + 目标角度)
+                const baseRotation = 360 * 5; // 5圈
+                const totalRotation = baseRotation + targetAngle;
+
+                // 重置transform状态，确保每次都从0开始
+                wheelWrapper.style.transition = 'none';
+                wheelWrapper.style.transform = 'rotate(0deg)';
+
+                // 强制重绘，确保重置生效
+                wheelWrapper.offsetHeight;
+
+                // 重新设置过渡动画
+                wheelWrapper.style.transition = 'transform 4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+
+                // 设置CSS变量用于动画
+                wheelWrapper.style.setProperty('--rotation', `${totalRotation}deg`);
+
+                // 添加旋转动画类
+                wheelWrapper.style.transform = `rotate(${totalRotation}deg)`;
+
+                // 动画结束后重置状态
+                setTimeout(() => {
+                    isSpinning = false;
+                    const finalAngle = totalRotation % 360;
+
+                    // 更新库存显示
+                    updateInventoryDisplay();
+
+                    console.log(`随机概率值：${random.toFixed(2)}%`);
+                    console.log(`目标角度：${targetAngle.toFixed(2)}°`);
+                    console.log(`最终角度：${finalAngle.toFixed(2)}°`);
+                    console.log(`恭喜！您抽中了${prize}：${prizeName}`);
+
+                    if (prizeGrade) {
+                        console.log(`剩余库存：${inventory[prizeGrade].name} - ${inventory[prizeGrade].quantity}件`);
+                    }
+
+                    // 显示中奖弹窗
+                    const prizeInfo = prizeGrade ? {
+                        grade: prize,
+                        name: prizeName,
+                        emoji: inventory[prizeGrade].emoji
+                    } : {
+                        grade: '五等奖',
+                        name: prizeName,
+                        emoji: '🙏'
+                    };
+
+                    showPrizeModal(prizeInfo);
+                }, 4000);
+            });
+        });
+    </script>
+
+</body>
+
+</html>
